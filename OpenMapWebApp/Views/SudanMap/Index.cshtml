@@ -1,0 +1,99 @@
+﻿
+@{
+    ViewBag.Title = "SudanMap";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+<style>
+    #map {
+        height: 600px;
+    }
+
+    .fa-icon {
+        font-size: 24px;
+        color: red;
+    }
+</style>
+
+<h2>SudanMap</h2>
+<div id="map"></div>
+
+<script>
+    // Initialize map
+    var map = L.map('map').setView([15.55, 32.55], 13);
+
+    // Add OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    // Fetch points and areas from server
+    fetch('/SudanMap/GetPointAreaInfo')
+        .then(response => response.json())
+        .then(data => {
+            console.log("Response data:", data); // Log the response
+
+            const points = data.Points;
+            const areas = data.Areas;
+
+            // Add points
+            points.forEach(point => {
+                var icon = L.divIcon({
+                    className: 'fa-icon',
+                    html: `<i class="fa ${point.FontAwesomeIcon || 'fa-map-marker'}"></i>`,
+                    iconSize: [24, 24],
+                    iconAnchor: [12, 24]
+                });
+                L.marker([point.Latitude, point.Longitude], { icon: icon })
+                    .bindPopup(`<b>${point.Name}</b>`)
+                    .addTo(map);
+            });
+
+            // Add areas
+            areas.forEach(area => {
+                // Transform Coordinates array into LatLng array
+                var latLngs = area.Coordinates.map(coord => [coord.Latitude, coord.Longitude]);
+
+                // Add polygon for the area
+                var polygon = L.polygon(latLngs, {
+                    color: area.Color || '#3388ff',
+                    weight: 1, // Border width (1px)
+
+                    fillColor: area.Color || '#3388ff',
+                    fillOpacity: 0.3
+                }).bindPopup(`<b>${area.Name}</b>`).addTo(map);
+
+                // Calculate the centroid (average latitude and longitude)
+                const centroid = latLngs.reduce((acc, latLng) => {
+                    acc[0] += latLng[0];
+                    acc[1] += latLng[1];
+                    return acc;
+                }, [0, 0]).map(val => val / latLngs.length);
+
+                // Add an icon at the centroid
+                var icon = L.divIcon({
+                    className: 'fa-icon',
+                    html: `<i class="fa ${area.FontAwesomeIcon || 'fa-map-marker'}"></i>`,
+                    iconSize: [24, 24],
+                    iconAnchor: [12, 24]
+                });
+                L.marker(centroid, { icon: icon })
+                    .bindPopup(`<b>${area.Name}</b>`)
+                    .addTo(map);
+
+            });
+        })
+        .catch(error => console.error('Error fetching data:', error));
+</script>
+
+
+
+
+
+
+
